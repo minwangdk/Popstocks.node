@@ -1,0 +1,15 @@
+extends layout
+
+
+block content
+  h1= title
+  p Welcome to #{title}
+
+append scripts
+  script.
+    var stock = {};
+    stock.name='!{title}';
+  script(type='text/javascript' src='/js/socket.io/socket.io.js')
+  script(type='text/javascript' src='https://ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js')
+  script(type='text/javascript' src='/js/socket.js')
+

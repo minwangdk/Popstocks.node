@@ -4,11 +4,36 @@ var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
-
-var routes = require('./routes/index');
-var users = require('./routes/users');
+var session = require('express-session');
+var socket_io = require('socket.io');
+var dbConfig = require('./db-config');
+var knex = require('knex')(dbConfig);
+var bookshelf = require('bookshelf')(knex);
 
 var app = express();
+var io = socket_io();
+
+// globals
+var stocks = []; // put into closure with private vars
+
+// io namespaces
+var pio = io.of('/price');
+var tio = io.of('/buySell');
+//var cio = io.of('/chat'); // for chat
+
+app.set('io', io); //pass io to www
+app.set('bookshelf', bookshelf); //pass instance of DB connection around
+
+// socket logic
+require('./realtime/controller/price-fetcher')(pio);
+require('./realtime/controller/trade-broker')(tio);
+
+// routes - see route order below
+var users = require('./routes/users');
+var about = require('./routes/about');
+var create = require('./routes/create');
+var stock = require('./routes/stock');
+var index = require('./routes/index');
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -20,11 +45,19 @@ app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(require('node-compass')({mode: 'expanded'}));
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(session({
+  secret: 'durian',
+  resave: false,
+  saveUninitialized: true
+}));
 
-app.use('/', routes);
+// route order
 app.use('/users', users);
+app.use('/about', about);
+app.use('/create', create);
+app.use('/', stock);
+app.use('/', index);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
@@ -49,13 +82,15 @@ if (app.get('env') === 'development') {
 
 // production error handler
 // no stacktraces leaked to user
-app.use(function(err, req, res, next) {
+/*app.use(function(err, req, res, next) {
   res.status(err.status || 500);
   res.render('error', {
     message: err.message,
     error: {}
   });
-});
+});*/
+
+
 
 
 module.exports = app;
